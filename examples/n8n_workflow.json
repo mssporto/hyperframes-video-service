@@ -1,0 +1,444 @@
+{
+  "name": "HyperFrames Short → Drive → YouTube",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-1680, 300],
+      "id": "n1-manual-trigger",
+      "name": "When clicking Test workflow"
+    },
+    {
+      "parameters": {
+        "content": "## HyperFrames Short → Drive → YouTube\n\n### How it works\nWrites a short-form video script with an LLM agent, builds a real HyperFrames project from it, renders it on your Modal service, saves the MP4 to Google Drive, and uploads it to YouTube.\n\n### Setup steps\n1. Open **Video Brief** and fill in `topic`, `display_name`, `cta_text`.\n2. `build_url` / `create_url` / `status_url` / `result_url` / `delete_url` already point at the deployed `dahianaporto-dev` HyperFrames service — change them if you deploy elsewhere.\n3. Set `drive_folder_id` to a real Drive folder ID (leave empty for My Drive root).\n4. Assign credentials: **OpenRouter** on the two model nodes, **Google Drive OAuth2** on Upload Video to Drive, **YouTube OAuth2** on Upload Video to YouTube.\n5. Run it. It polls every 30s until the render finishes, then uploads.\n\n### Customization tips\n- `youtube_privacy_status` defaults to `private` — flip to `public`/`unlisted` once you trust the pipeline.\n- The render job is deleted from Modal automatically once the MP4 is downloaded (and also on failure) — nothing is left running up storage costs.",
+        "height": 460,
+        "width": 460,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-1680, -260],
+      "id": "n0-overview",
+      "name": "Overview"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "a1", "name": "topic", "value": "why most onboarding emails get ignored", "type": "string"},
+            {"id": "a2", "name": "display_name", "value": "your show", "type": "string"},
+            {"id": "a3", "name": "cta_text", "value": "yoursite.com", "type": "string"},
+            {"id": "a4", "name": "model", "value": "openai/gpt-4o-mini", "type": "string"},
+            {"id": "a5", "name": "fallback_model", "value": "openai/gpt-4o-mini", "type": "string"},
+            {"id": "a6", "name": "build_url", "value": "https://dahianaporto-dev--hyperframes-video-build.modal.run", "type": "string"},
+            {"id": "a7", "name": "create_url", "value": "https://dahianaporto-dev--hyperframes-video-create.modal.run", "type": "string"},
+            {"id": "a8", "name": "status_url", "value": "https://dahianaporto-dev--hyperframes-video-status.modal.run", "type": "string"},
+            {"id": "a9", "name": "result_url", "value": "https://dahianaporto-dev--hyperframes-video-result.modal.run", "type": "string"},
+            {"id": "a10", "name": "delete_url", "value": "https://dahianaporto-dev--hyperframes-video-delete.modal.run", "type": "string"},
+            {"id": "a11", "name": "drive_folder_id", "value": "", "type": "string"},
+            {"id": "a12", "name": "youtube_privacy_status", "value": "private", "type": "string"},
+            {"id": "a13", "name": "youtube_category_id", "value": "22", "type": "string"}
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-1440, 300],
+      "id": "n2-video-brief",
+      "name": "Video Brief"
+    },
+    {
+      "parameters": {
+        "model": "={{ $('Video Brief').item.json.model }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [-1280, 560],
+      "id": "n3-main-model",
+      "name": "Main Model",
+      "credentials": {
+        "openRouterApi": {"id": "REPLACE_ME", "name": "OpenRouter account"}
+      }
+    },
+    {
+      "parameters": {
+        "model": "={{ $('Video Brief').item.json.fallback_model }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [-1120, 620],
+      "id": "n3b-fallback-model",
+      "name": "Fallback Model",
+      "credentials": {
+        "openRouterApi": {"id": "REPLACE_ME", "name": "OpenRouter account"}
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"youtubeTitle\": \"Why your onboarding emails get ignored\",\n  \"youtubeDescription\": \"Most onboarding emails read like a press release. Here's what actually gets opened.\\n\\nyoursite.com\\n\\n#Shorts #Onboarding #EmailMarketing\",\n  \"projectId\": \"onboarding-emails-ignored\",\n  \"frames\": [\n    { \"id\": \"s01\", \"template\": \"body-stroke-hook\", \"tokens\": { \"HEADLINE_TOP\": \"Your onboarding email\", \"HEADLINE_PAYOFF\": \"got ignored\" } },\n    { \"id\": \"s02\", \"template\": \"body-word-emphasis\", \"tokens\": { \"HEADLINE\": \"It read like a [[brochure]]\" } },\n    { \"id\": \"s03\", \"template\": \"body-split-contrast\", \"tokens\": { \"CLAUSE_A\": \"You explained every feature.\", \"CLAUSE_B\": \"Nobody asked for a tour.\" } },\n    { \"id\": \"s04\", \"template\": \"body-step-list\", \"tokens\": {}, \"items\": [ { \"STEP_LABEL\": \"Say one thing\" }, { \"STEP_LABEL\": \"Make it actionable\" }, { \"STEP_LABEL\": \"Stop there\" } ] },\n    { \"id\": \"s05\", \"template\": \"body-bridge\", \"tokens\": { \"HEADLINE\": \"That's the [[whole]] email\" } },\n    { \"id\": \"s06\", \"template\": \"close-cta\", \"tokens\": { \"HEADLINE\": \"Write less. Land more.\", \"CTA_TEXT\": \"yoursite.com\" } }\n  ]\n}",
+        "autoFix": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [-960, 560],
+      "id": "n5-parser",
+      "name": "Structured Output Parser Video"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ JSON.stringify({ topic: $('Video Brief').item.json.topic, display_name: $('Video Brief').item.json.display_name, cta_text: $('Video Brief').item.json.cta_text }) }}",
+        "hasOutputParser": true,
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "=You write short-form YouTube Shorts scripts for {{ $('Video Brief').item.json.display_name }}.\n\nYou receive a brief and produce a HyperFrames \"video plan\": a fixed set of parameterised frame templates that a deterministic tool assembles into a real video. You never write markup — only JSON.\n\n# Frame count\nWrite 5-7 content frames, plus exactly one mandatory closing frame (close-cta) at the end — 6-8 frames total. Keep the whole video under ~28 seconds: most templates run 2.2-3.8s each, and the two list templates (body-sequential-list, body-step-list) run about 1s plus 0.5-1.2s per item, so keep those to 2-3 items and don't overload the frame count.\n\n# Writing style\n- Everything you write must come from the topic given — no invented facts, quotes, or stats.\n- Each frame is one beat of a spoken story, not a sentence or a summary.\n- No transition phrases (\"Then\", \"So\", \"This means\").\n- No passive voice.\n- Sentence case, no ALL CAPS, no emojis, no exclamation marks.\n- No single body template more than twice per video; use at least 3 distinct templates.\n\n# Emphasis marker\nWrap ONE word or short phrase per line in double square brackets — e.g. \"Measure what [[actually]] moves\" — to render it in the accent colour. Every \"[[\" needs a matching \"]]\". Never use it in body-step-list's STEP_LABEL (it has no accent engine there).\n\n# Available templates (body + closing only — this workflow doesn't wire up image assets)\nbody-stroke-hook: tokens {\"HEADLINE_TOP\" (2-4 words), \"HEADLINE_PAYOFF\" (1-3 words)}\nbody-word-emphasis: tokens {\"HEADLINE\" (3-6 words, one [[emphasis]])}\nbody-split-contrast: tokens {\"CLAUSE_A\", \"CLAUSE_B\"}\nbody-bridge: tokens {\"HEADLINE\" (2-5 words)}\nbody-standout-line: tokens {\"LINE_1\" (required), \"LINE_2\" (optional), \"LINE_3\" (optional)}\nbody-sequential-list: no scalar tokens; \"items\": [{\"LINE_TEXT\": \"...\"}], 2-3 items\nbody-step-list: no scalar tokens; \"items\": [{\"STEP_LABEL\": \"...\"}], 2-3 items, never a number in STEP_LABEL\n\n# Mandatory closing frame\nAlways end with exactly this one frame:\n{ \"template\": \"close-cta\", \"tokens\": { \"HEADLINE\": \"<closing hook line, 3-8 words, vary it across videos>\", \"CTA_TEXT\": \"{{ $('Video Brief').item.json.cta_text }}\" } }\n\n# Output\nReturn ONLY this JSON, nothing else:\n{\n  \"youtubeTitle\": \"max 60 chars, sentence case, hook-first\",\n  \"youtubeDescription\": \"2-3 sentences, plain prose, ends with {{ $('Video Brief').item.json.cta_text }} on its own line then 3-5 hashtags including #Shorts\",\n  \"projectId\": \"kebab-case slug derived from the topic\",\n  \"frames\": [ { \"id\": \"s01\", \"template\": \"...\", \"tokens\": { ... } }, ... ]\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [-1200, 300],
+      "id": "n4-agent",
+      "name": "Video Copy Agent",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "let out = $('Video Copy Agent').first().json.output;\nif (typeof out === 'string') { out = JSON.parse(out); }\nconst frames = Array.isArray(out.frames) ? out.frames : [];\n\nreturn [{\n  json: {\n    projectId: out.projectId || 'video',\n    youtubeTitle: out.youtubeTitle || '',\n    youtubeDescription: out.youtubeDescription || '',\n    plan: {\n      project_id: out.projectId || 'video',\n      frames: frames\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-960, 300],
+      "id": "n6-assemble",
+      "name": "Assemble Build Request"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Video Brief').item.json.build_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ plan: $json.plan }) }}",
+        "options": {
+          "response": {"response": {"responseFormat": "json"}},
+          "timeout": 60000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [-720, 300],
+      "id": "n7-build",
+      "name": "Build Video Project"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Video Brief').item.json.create_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ projectZipBase64: $json.projectZipBase64, outputName: ($('Assemble Build Request').first().json.projectId || 'video') + '.mp4' }) }}",
+        "options": {
+          "response": {"response": {"responseFormat": "json"}},
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [-480, 300],
+      "id": "n8-create",
+      "name": "Start Video Creation"
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [-240, 300],
+      "id": "n9-wait",
+      "name": "Wait",
+      "webhookId": "d5e2f0f1-6b3d-4a8b-9a4f-4f6b1e2c3a10"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Video Brief').item.json.status_url }}?job_id={{ $('Start Video Creation').item.json.jobId }}",
+        "options": {
+          "response": {"response": {"responseFormat": "json"}},
+          "timeout": 60000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [0, 300],
+      "id": "n10-status",
+      "name": "Get Video Status",
+      "retryOnFail": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3},
+          "conditions": [
+            {
+              "id": "c1-complete",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "complete",
+              "operator": {"type": "string", "operation": "equals", "name": "filter.operator.equals"}
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [240, 300],
+      "id": "n11-iscomplete",
+      "name": "Is Complete?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3},
+          "conditions": [
+            {
+              "id": "c2-failed",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "failed",
+              "operator": {"type": "string", "operation": "equals", "name": "filter.operator.equals"}
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [240, 520],
+      "id": "n12-didfail",
+      "name": "Did it fail?"
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "={{ $('Video Brief').item.json.delete_url }}?job_id={{ $('Start Video Creation').item.json.jobId }}",
+        "options": {
+          "response": {"response": {"responseFormat": "json"}},
+          "timeout": 60000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [480, 520],
+      "id": "n13-delfail",
+      "name": "Delete Video Job (Failed)",
+      "retryOnFail": true,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "errorMessage": "={{ 'HyperFrames render failed: ' + ($('Get Video Status').item.json.error || 'unknown error') }}"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [720, 520],
+      "id": "n14-stoperr",
+      "name": "Render Failed"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Video Brief').item.json.result_url }}?job_id={{ $json.jobId }}",
+        "options": {
+          "response": {"response": {"responseFormat": "file"}},
+          "timeout": 60000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [480, 300],
+      "id": "n15-result",
+      "name": "Get Video Result",
+      "retryOnFail": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "name": "={{ ($('Assemble Build Request').first().json.projectId || 'video') + '.mp4' }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $('Video Brief').item.json.drive_folder_id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [720, 220],
+      "id": "n16-drive",
+      "name": "Upload Video to Drive",
+      "credentials": {
+        "googleDriveOAuth2Api": {"id": "REPLACE_ME", "name": "Google Drive account"}
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Watch out\nYouTube uploads default to `privacyStatus: private` (see Video Brief). Flip it to `public`/`unlisted` only once you trust the copy the agent is writing — a real YouTube upload isn't easily undone once public.",
+        "height": 160,
+        "width": 260,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [960, 460],
+      "id": "n0b-warning",
+      "name": "Warning"
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "operation": "upload",
+        "title": "={{ $('Assemble Build Request').first().json.youtubeTitle }}",
+        "regionCode": "US",
+        "categoryId": "={{ $('Video Brief').item.json.youtube_category_id }}",
+        "binaryProperty": "data",
+        "options": {
+          "description": "={{ $('Assemble Build Request').first().json.youtubeDescription }}",
+          "privacyStatus": "={{ $('Video Brief').item.json.youtube_privacy_status }}"
+        }
+      },
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [720, 380],
+      "id": "n17-youtube",
+      "name": "Upload Video to YouTube",
+      "credentials": {
+        "youTubeOAuth2Api": {"id": "REPLACE_ME", "name": "YouTube account"}
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [960, 300],
+      "id": "n18-merge",
+      "name": "Both Uploads Done"
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "={{ $('Video Brief').item.json.delete_url }}?job_id={{ $('Start Video Creation').item.json.jobId }}",
+        "options": {
+          "response": {"response": {"responseFormat": "json"}},
+          "timeout": 60000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1200, 300],
+      "id": "n19-delok",
+      "name": "Delete Video Job (Cleanup)",
+      "retryOnFail": true,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1440, 300],
+      "id": "n20-done",
+      "name": "Done"
+    }
+  ],
+  "connections": {
+    "When clicking Test workflow": {
+      "main": [[{"node": "Video Brief", "type": "main", "index": 0}]]
+    },
+    "Video Brief": {
+      "main": [[{"node": "Video Copy Agent", "type": "main", "index": 0}]]
+    },
+    "Main Model": {
+      "ai_languageModel": [[
+        {"node": "Video Copy Agent", "type": "ai_languageModel", "index": 0},
+        {"node": "Structured Output Parser Video", "type": "ai_languageModel", "index": 0}
+      ]]
+    },
+    "Fallback Model": {
+      "ai_languageModel": [[{"node": "Video Copy Agent", "type": "ai_languageModel", "index": 1}]]
+    },
+    "Structured Output Parser Video": {
+      "ai_outputParser": [[{"node": "Video Copy Agent", "type": "ai_outputParser", "index": 0}]]
+    },
+    "Video Copy Agent": {
+      "main": [[{"node": "Assemble Build Request", "type": "main", "index": 0}]]
+    },
+    "Assemble Build Request": {
+      "main": [[{"node": "Build Video Project", "type": "main", "index": 0}]]
+    },
+    "Build Video Project": {
+      "main": [[{"node": "Start Video Creation", "type": "main", "index": 0}]]
+    },
+    "Start Video Creation": {
+      "main": [[{"node": "Wait", "type": "main", "index": 0}]]
+    },
+    "Wait": {
+      "main": [[{"node": "Get Video Status", "type": "main", "index": 0}]]
+    },
+    "Get Video Status": {
+      "main": [[{"node": "Is Complete?", "type": "main", "index": 0}]]
+    },
+    "Is Complete?": {
+      "main": [
+        [{"node": "Get Video Result", "type": "main", "index": 0}],
+        [{"node": "Did it fail?", "type": "main", "index": 0}]
+      ]
+    },
+    "Did it fail?": {
+      "main": [
+        [{"node": "Delete Video Job (Failed)", "type": "main", "index": 0}],
+        [{"node": "Wait", "type": "main", "index": 0}]
+      ]
+    },
+    "Delete Video Job (Failed)": {
+      "main": [[{"node": "Render Failed", "type": "main", "index": 0}]]
+    },
+    "Get Video Result": {
+      "main": [[
+        {"node": "Upload Video to Drive", "type": "main", "index": 0},
+        {"node": "Upload Video to YouTube", "type": "main", "index": 0}
+      ]]
+    },
+    "Upload Video to Drive": {
+      "main": [[{"node": "Both Uploads Done", "type": "main", "index": 0}]]
+    },
+    "Upload Video to YouTube": {
+      "main": [[{"node": "Both Uploads Done", "type": "main", "index": 1}]]
+    },
+    "Both Uploads Done": {
+      "main": [[{"node": "Delete Video Job (Cleanup)", "type": "main", "index": 0}]]
+    },
+    "Delete Video Job (Cleanup)": {
+      "main": [[{"node": "Done", "type": "main", "index": 0}]]
+    }
+  },
+  "pinData": {},
+  "settings": {"executionOrder": "v1"},
+  "meta": {"instanceId": "hyperframes-video-service"}
+}
