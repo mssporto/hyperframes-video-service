@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <!-- GENERIC (per-client themed) HyperFrames sub-composition template.
+         Structurally identical to hyperframes_templates/closing/close-cta.html (same markup,
+         same GSAP timeline, same timing) -- ONLY colour, font, and the logo are parameterized.
+         SPECIAL CASE: this is the one frame that shows the full centered LOGO (the client's
+         wordmark equivalent) instead of the top-left corner mark, and its progress bar is
+         full. The {{LOGO_MARKUP}} slot here is the wordmark position, animated by the
+         timeline via data-role="wordmark". See CONTRACT.md §3.1.
+         CONTENT PLACEHOLDERS (per CONTRACT.md §2):
+           {{FRAME_ID}}      unique-per-instance id
+           {{PROGRESS_PCT}}  progress-bar fill width (normally "100%")
+           {{HEADLINE}}      the closing hook line (3-8 words); one word may be [[emphasis]]
+           {{CTA_TEXT}}      the CTA rectangle label, e.g. "example.com" / "hello@example.com"
+         THEME PLACEHOLDERS (per CONTRACT.md §3.1):
+           {{THEME_FONT_IMPORT}} {{THEME_BG}} {{THEME_TEXT}} {{THEME_LEAD_TEXT}}
+           {{THEME_ACCENT}} {{THEME_ACCENT_TEXT}} {{THEME_FONT}} {{LOGO_MARKUP}} -->
+  </head>
+  <body>
+    <template>
+      <style>
+        {{THEME_FONT_IMPORT}}
+
+        :root {
+          --theme-bg: {{THEME_BG}};
+          --theme-text: {{THEME_TEXT}};
+          --theme-lead-text: {{THEME_LEAD_TEXT}};
+          --theme-accent: {{THEME_ACCENT}};
+          --theme-accent-text: {{THEME_ACCENT_TEXT}};
+          --theme-font: {{THEME_FONT}};
+        }
+
+        #root {
+          position: absolute; inset: 0; width: 1080px; height: 1920px;
+          container-type: size; overflow: hidden; background: var(--theme-bg);
+          font-family: var(--theme-font); color: var(--theme-text);
+        }
+        .bg { position: absolute; inset: 0; background: var(--theme-bg); }
+
+        .progress-bar {
+          position: absolute; left: 0; right: 0; bottom: 0;
+          height: 4px; width: {{PROGRESS_PCT}}; background: var(--theme-accent); border-radius: 0;
+        }
+
+        .wordmark-wrap {
+          position: absolute; left: 50%; top: 30cqh; transform: translate(-50%, -50%);
+          width: 52cqw; height: 16cqh; will-change: transform, opacity;
+        }
+        .wordmark-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; }
+        .wordmark-wrap:empty { display: none; }
+
+        .cta-stage {
+          position: absolute; left: 50%; top: 46cqh; transform: translateX(-50%);
+          width: 84cqw; display: flex; flex-direction: column; align-items: center; gap: 5cqh;
+        }
+        .headline {
+          margin: 0; display: flex; flex-wrap: wrap; justify-content: center; text-align: center;
+          font-weight: 700; font-size: 5.8cqw; line-height: 1.15; letter-spacing: -0.02em;
+          color: var(--theme-text);
+        }
+        .word { display: inline-block; will-change: transform, opacity; }
+        .word:not(:last-child) { margin-right: 0.32em; }
+        .word.accent { color: var(--theme-accent); }
+
+        .cta-rect {
+          display: inline-flex; align-items: center; justify-content: center; gap: 1.2cqw;
+          background: var(--theme-accent); padding: 2.6cqh 4.4cqw; border-radius: 0; box-shadow: none;
+          will-change: transform, opacity;
+        }
+        .cta-text { font-weight: 600; font-size: 3cqw; letter-spacing: 0.01em; color: var(--theme-accent-text); }
+        .cta-arrow { width: 2.6cqw; height: 2.6cqw; color: var(--theme-accent-text); display: flex; }
+        .cta-arrow svg { width: 100%; height: 100%; display: block; }
+      </style>
+
+      <div id="root" data-composition-id="{{FRAME_ID}}" data-width="1080" data-height="1920">
+        <div class="bg"></div>
+
+        <!-- Client logo (wordmark position). Real <img> injected via {{LOGO_MARKUP}},
+             or empty (slot collapses) when the client has no logo configured yet -->
+        <div class="wordmark-wrap" data-role="wordmark">{{LOGO_MARKUP}}</div>
+
+        <div class="cta-stage">
+          <p class="headline" data-role="headline">{{HEADLINE}}</p>
+          <div class="cta-rect" data-role="cta">
+            <span class="cta-text">{{CTA_TEXT}}</span>
+            <span class="cta-arrow">
+              <svg viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M128 246L246 128L128 10M246 128H9" stroke="currentColor" stroke-width="4" />
+              </svg>
+            </span>
+          </div>
+        </div>
+
+        <div class="progress-bar"></div>
+      </div>
+
+      <script>
+        function hfSplitWords(el) {
+          if (!el) return [];
+          const raw = (el.textContent || "").trim();
+          el.textContent = "";
+          const spans = [];
+          // Split on [[...]] phrase boundaries first (a bracket pair may wrap more
+          // than one word, e.g. "[[really matters]]" — every word inside one pair
+          // gets the accent). Trailing punctuation glued to the closing brackets
+          // (e.g. "[[results]],") travels with the phrase and lands on its last word.
+          const parts = raw.split(/(\[\[[\s\S]+?\]\][.,!?;:]*)/g);
+          parts.forEach((part) => {
+            if (!part) return;
+            const m = part.match(/^\[\[([\s\S]+?)\]\]([.,!?;:]*)$/);
+            if (m) {
+              const words = m[1].trim().split(/\s+/).filter(Boolean);
+              words.forEach((w, i) => {
+                const span = document.createElement("span");
+                span.className = "word accent";
+                span.textContent = w + (i === words.length - 1 ? m[2] : "");
+                el.appendChild(span);
+                spans.push(span);
+              });
+            } else {
+              part.trim().split(/\s+/).filter(Boolean).forEach((w) => {
+                const span = document.createElement("span");
+                span.className = "word";
+                span.textContent = w;
+                el.appendChild(span);
+                spans.push(span);
+              });
+            }
+          });
+          return spans;
+        }
+
+        window.__timelines = window.__timelines || {};
+        const root = document.querySelector('[data-composition-id="{{FRAME_ID}}"]');
+        const tl = gsap.timeline({ paused: true });
+
+        const wordmark = root.querySelector('[data-role="wordmark"]');
+        const words = hfSplitWords(root.querySelector('[data-role="headline"]'));
+        const cta = root.querySelector('[data-role="cta"]');
+
+        // Wordmark settles in via a calm power3 pop — no overshoot, this is a calm close.
+        tl.fromTo(wordmark, { opacity: 0, scale: 0.86 },
+          { opacity: 1, scale: 1, duration: 0.75, ease: "power3.out" }, 0.15);
+
+        // Closing hook reveals per-word beneath.
+        tl.fromTo(words, { opacity: 0, y: 28 },
+          { opacity: 1, y: 0, duration: 0.36, ease: "power3.out", stagger: 0.09 }, 1.1);
+
+        // The solid accent CTA rectangle resolves via a brief scale-in settle.
+        tl.fromTo(cta, { opacity: 0, scale: 0.88 },
+          { opacity: 1, scale: 1, duration: 0.46, ease: "power3.out" }, 2.0);
+
+        window.__timelines["{{FRAME_ID}}"] = tl;
+      </script>
+    </template>
+  </body>
+</html>

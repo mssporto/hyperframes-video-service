@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <!-- GENERIC (per-client themed) HyperFrames sub-composition template.
+         Structurally identical to hyperframes_templates/body/body-step-list.html
+         (same markup, same GSAP timeline, same timing) -- ONLY colour, font, and the
+         brand mark are parameterized. See hyperframes_templates/CONTRACT.md §3.1 for the
+         themed-token contract. Filled by tools.hyperframes_project_builder.build_project
+         with template_set="generic" and a tools.video_theme theme.
+
+         REPEAT BLOCK: the assembler duplicates the region between
+           <!-- hf:repeat:row start --> and <!-- hf:repeat:row end -->
+         once per step, substituting {{ICON_SVG}} and {{STEP_LABEL}}, then strips the markers.
+         Step numbers are assigned automatically from row order — do NOT template them.
+
+         CONTENT PLACEHOLDERS (per CONTRACT.md §2):
+           {{FRAME_ID}}      unique-per-instance id
+           {{PROGRESS_PCT}}  progress-bar fill width
+           {{ICON_SVG}}      OPTIONAL raw inline <svg> per row; "" = no icon
+           {{STEP_LABEL}}    the step's label text (repeated)
+         THEME PLACEHOLDERS (per CONTRACT.md §3.1, injected globally by video_theme):
+           {{THEME_FONT_IMPORT}}  a full @import statement for the brand font, or ""
+           {{THEME_BG}} {{THEME_TEXT}} {{THEME_ACCENT}}
+           {{THEME_ACCENT_TEXT}} {{THEME_FONT}}   base :root custom-property values
+           {{LOGO_MARKUP}}   the client's real logo <img>, or "" (never a fallback mark) -->
+  </head>
+  <body>
+    <template>
+      <style>
+        {{THEME_FONT_IMPORT}}
+
+        :root {
+          --theme-bg: {{THEME_BG}};
+          --theme-text: {{THEME_TEXT}};
+          --theme-accent: {{THEME_ACCENT}};
+          --theme-accent-text: {{THEME_ACCENT_TEXT}};
+          --theme-font: {{THEME_FONT}};
+          /* translucent accent tints, derived from the single accent (match the
+             original hardcoded rgba(255,125,155,α) row fill / border / track) */
+          --theme-accent-a07: color-mix(in srgb, var(--theme-accent) 7%, transparent);
+          --theme-accent-a20: color-mix(in srgb, var(--theme-accent) 20%, transparent);
+          --theme-accent-a28: color-mix(in srgb, var(--theme-accent) 28%, transparent);
+        }
+
+        #root {
+          position: absolute; inset: 0; width: 1080px; height: 1920px;
+          container-type: size; overflow: hidden; background: var(--theme-bg);
+          font-family: var(--theme-font); color: var(--theme-text);
+        }
+        .bg { position: absolute; inset: 0; background: var(--theme-bg); }
+
+        .brand-mark { position: absolute; top: 5cqw; left: 5cqw; width: 6cqw; height: 6cqw; }
+        .brand-mark img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: left center; }
+        .brand-mark:empty { display: none; }
+
+        .progress-track {
+          position: absolute; left: 0; right: 0; bottom: 0;
+          height: 4px; background: var(--theme-accent-a20);
+        }
+        .progress-fill { height: 100%; width: {{PROGRESS_PCT}}; background: var(--theme-accent); }
+
+        .rows {
+          position: absolute; left: 5cqw; right: 5cqw; top: 50%;
+          transform: translateY(-50%);
+          display: flex; flex-direction: column; gap: 2.6cqw;
+        }
+        .row {
+          display: flex; align-items: center; gap: 2.2cqw; width: 100%;
+          padding: 2cqw 2.4cqw;
+          background: var(--theme-accent-a07);
+          border: 1.5px solid var(--theme-accent-a28);
+          border-radius: 16px; box-shadow: none;
+          will-change: transform, opacity;
+        }
+        .badge {
+          flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+          width: 7.4cqw; height: 7.4cqw; background: var(--theme-accent); border-radius: 0;
+          font-weight: 800; font-size: 3.2cqw; color: var(--theme-accent-text);
+          transform-origin: 50% 50%; will-change: transform, opacity;
+        }
+        .icon-wrap {
+          flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+          width: 8.6cqw; height: 8.6cqw; transform-origin: 50% 50%;
+          will-change: transform, opacity;
+        }
+        .icon-wrap svg { width: 100%; height: 100%; display: block; }
+        .icon-wrap:empty { display: none; }
+        .label {
+          flex: 1; font-weight: 700; font-size: 2.75cqw; line-height: 1.2;
+          letter-spacing: 0.01em; text-transform: uppercase; color: var(--theme-text);
+        }
+      </style>
+
+      <div id="root" data-composition-id="{{FRAME_ID}}" data-width="1080" data-height="1920">
+        <div class="bg"></div>
+
+        <div class="brand-mark">{{LOGO_MARKUP}}</div>
+
+        <div class="rows">
+          <!-- hf:repeat:row start -->
+          <div class="row">
+            <div class="badge" data-role="badge"></div>
+            <div class="icon-wrap" data-role="icon">{{ICON_SVG}}</div>
+            <div class="label">{{STEP_LABEL}}</div>
+          </div>
+          <!-- hf:repeat:row end -->
+        </div>
+
+        <div class="progress-track"><div class="progress-fill"></div></div>
+      </div>
+
+      <script>
+        window.__timelines = window.__timelines || {};
+        const root = document.querySelector('[data-composition-id="{{FRAME_ID}}"]');
+        const tl = gsap.timeline({ paused: true });
+
+        const rows = gsap.utils.toArray(root.querySelectorAll(".row"));
+
+        // Auto-number the square step badges from row order.
+        rows.forEach((row, i) => {
+          const badge = row.querySelector('[data-role="badge"]');
+          if (badge) badge.textContent = String(i + 1);
+        });
+
+        const STEP = 1.2;   // seconds between successive rows landing
+        rows.forEach((row, i) => {
+          const start = 0.4 + i * STEP;
+          const badge = row.querySelector('[data-role="badge"]');
+          const iconEl = row.querySelector('[data-role="icon"]');
+          const label = row.querySelector(".label");
+          const hasIcon = iconEl && iconEl.querySelector("svg");
+
+          // Card reveals — smooth, no bounce.
+          tl.fromTo(row, { opacity: 0 },
+            { opacity: 1, duration: 0.4, ease: "power3.out" }, start);
+          // Badge pops — back.out(1.7), the one sanctioned overshoot.
+          tl.fromTo(badge, { scale: 0, opacity: 0 },
+            { scale: 1, opacity: 1, duration: 0.5, ease: "back.out(1.7)" }, start);
+          if (hasIcon) {
+            tl.fromTo(iconEl, { scale: 0, opacity: 0 },
+              { scale: 1, opacity: 1, duration: 0.5, ease: "back.out(1.7)" }, start + 0.05);
+          }
+          // Label slides in — never overshoots.
+          tl.fromTo(label, { opacity: 0, x: -16 },
+            { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, start + 0.08);
+
+          // Focus dim-ladder: the previous row steps back as this one arrives.
+          if (i > 0) {
+            tl.fromTo(rows[i - 1], { opacity: 1 },
+              { opacity: 0.6, duration: 0.35, ease: "power2.out" }, start);
+          }
+        });
+
+        window.__timelines["{{FRAME_ID}}"] = tl;
+      </script>
+    </template>
+  </body>
+</html>

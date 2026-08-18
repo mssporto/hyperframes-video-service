@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <!-- GENERIC (per-client themed) HyperFrames sub-composition template.
+         Structurally identical to hyperframes_templates/body/body-word-emphasis.html
+         (same markup, same GSAP timeline, same timing) -- ONLY colour, font, and the
+         brand mark are parameterized. See hyperframes_templates/CONTRACT.md §3.1 for the
+         themed-token contract. Filled by tools.hyperframes_project_builder.build_project
+         with template_set="generic" and a tools.video_theme theme.
+         CONTENT PLACEHOLDERS (per CONTRACT.md §2):
+           {{FRAME_ID}}      unique-per-instance id
+           {{PROGRESS_PCT}}  progress-bar fill width, e.g. "37.5%"
+           {{ICON_SVG}}      OPTIONAL raw inline <svg>; "" = no icon. NOTE: an injected
+                             icon keeps whatever stroke colour it ships with (icon selection
+                             is an upstream concern); theming its stroke to the client accent
+                             is a wiring-time follow-up, not handled in this template.
+           {{HEADLINE}}      3-6 words, one word may be [[emphasis]] for accent colour
+         THEME PLACEHOLDERS (per CONTRACT.md §3.1, injected globally by video_theme):
+           {{THEME_FONT_IMPORT}}  a full @import statement for the brand font, or ""
+           {{THEME_BG}} {{THEME_TEXT}} {{THEME_LEAD_TEXT}} {{THEME_ACCENT}}
+           {{THEME_ACCENT_TEXT}} {{THEME_FONT}}   base :root custom-property values
+           {{LOGO_MARKUP}}   the client's real logo <img>, or "" (never a fallback mark) -->
+  </head>
+  <body>
+    <template>
+      <style>
+        {{THEME_FONT_IMPORT}}
+
+        :root {
+          --theme-bg: {{THEME_BG}};
+          --theme-text: {{THEME_TEXT}};
+          --theme-lead-text: {{THEME_LEAD_TEXT}};
+          --theme-accent: {{THEME_ACCENT}};
+          --theme-font: {{THEME_FONT}};
+          /* translucent accent, derived from the single accent (matches the
+             original hardcoded rgba(255,125,155,0.2) progress-track tint) */
+          --theme-accent-a20: color-mix(in srgb, var(--theme-accent) 20%, transparent);
+        }
+
+        #root {
+          position: absolute; inset: 0; width: 1080px; height: 1920px;
+          container-type: size; overflow: hidden; background: var(--theme-bg);
+          font-family: var(--theme-font); color: var(--theme-text);
+        }
+        .bg { position: absolute; inset: 0; background: var(--theme-bg); }
+
+        .brand-mark { position: absolute; top: 5cqw; left: 5cqw; width: 6cqw; height: 6cqw; }
+        .brand-mark img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: left center; }
+        .brand-mark:empty { display: none; }
+
+        .progress-track {
+          position: absolute; left: 0; right: 0; bottom: 0;
+          height: 4px; background: var(--theme-accent-a20);
+        }
+        .progress-fill { height: 100%; width: {{PROGRESS_PCT}}; background: var(--theme-accent); }
+
+        .stage {
+          position: absolute; left: 50%; top: 48%;
+          transform: translate(-50%, -50%);
+          display: flex; flex-direction: column; align-items: center;
+          gap: 2.4cqw; width: 100%;
+        }
+        .icon-wrap {
+          width: 210px; height: 210px; transform-origin: 50% 50%;
+          display: flex; align-items: center; justify-content: center;
+          will-change: transform, opacity;
+        }
+        .icon-wrap svg { width: 100%; height: 100%; display: block; }
+        .icon-wrap:empty { display: none; }
+
+        .accent-line-svg { display: block; width: 60px; height: 4px; overflow: visible; }
+        .accent-line-svg line { stroke: var(--theme-accent); stroke-width: 4; stroke-linecap: square; }
+
+        .headline {
+          margin: 0; max-width: 78cqw;
+          display: flex; flex-wrap: wrap; justify-content: center;
+          text-align: center; font-weight: 700; font-size: 6.7cqw;
+          line-height: 1.15; letter-spacing: -0.02em; color: var(--theme-text);
+        }
+        .word { display: inline-block; will-change: transform, opacity; }
+        .word:not(:last-child) { margin-right: 0.3em; }
+        .word.accent { color: var(--theme-accent); }
+      </style>
+
+      <div id="root" data-composition-id="{{FRAME_ID}}" data-width="1080" data-height="1920">
+        <div class="bg"></div>
+
+        <div class="brand-mark">{{LOGO_MARKUP}}</div>
+
+        <div class="stage">
+          <div class="icon-wrap" data-role="icon">{{ICON_SVG}}</div>
+          <svg class="accent-line-svg" viewBox="0 0 60 4">
+            <line class="accent-line-stroke" x1="2" y1="2" x2="58" y2="2" />
+          </svg>
+          <p class="headline" data-role="headline">{{HEADLINE}}</p>
+        </div>
+
+        <div class="progress-track"><div class="progress-fill"></div></div>
+      </div>
+
+      <script>
+        function hfSplitWords(el) {
+          if (!el) return [];
+          const raw = (el.textContent || "").trim();
+          el.textContent = "";
+          const spans = [];
+          // Split on [[...]] phrase boundaries first (a bracket pair may wrap more
+          // than one word, e.g. "[[really matters]]" — every word inside one pair
+          // gets the accent). Trailing punctuation glued to the closing brackets
+          // (e.g. "[[results]],") travels with the phrase and lands on its last word.
+          const parts = raw.split(/(\[\[[\s\S]+?\]\][.,!?;:]*)/g);
+          parts.forEach((part) => {
+            if (!part) return;
+            const m = part.match(/^\[\[([\s\S]+?)\]\]([.,!?;:]*)$/);
+            if (m) {
+              const words = m[1].trim().split(/\s+/).filter(Boolean);
+              words.forEach((w, i) => {
+                const span = document.createElement("span");
+                span.className = "word accent";
+                span.textContent = w + (i === words.length - 1 ? m[2] : "");
+                el.appendChild(span);
+                spans.push(span);
+              });
+            } else {
+              part.trim().split(/\s+/).filter(Boolean).forEach((w) => {
+                const span = document.createElement("span");
+                span.className = "word";
+                span.textContent = w;
+                el.appendChild(span);
+                spans.push(span);
+              });
+            }
+          });
+          return spans;
+        }
+
+        window.__timelines = window.__timelines || {};
+        const root = document.querySelector('[data-composition-id="{{FRAME_ID}}"]');
+        const tl = gsap.timeline({ paused: true });
+
+        const words = hfSplitWords(root.querySelector('[data-role="headline"]'));
+        const iconEl = root.querySelector('[data-role="icon"]');
+        const hasIcon = iconEl && iconEl.querySelector("svg");
+        const lineEl = root.querySelector(".accent-line-stroke");
+        const lineLen = lineEl.getTotalLength();
+        lineEl.style.strokeDasharray = "" + lineLen;
+        lineEl.style.strokeDashoffset = "" + lineLen;
+
+        // Accent-line self-draws first (a pen lifting, no bounce).
+        tl.to(lineEl, { strokeDashoffset: 0, duration: 0.4, ease: "power2.out" }, 0.05);
+
+        // Icon pop-in above the line — back.out(1.7) is the one sanctioned overshoot
+        // (icon arrival only, never text). Skipped cleanly when no icon supplied.
+        if (hasIcon) {
+          tl.fromTo(iconEl, { scale: 0, opacity: 0 },
+            { scale: 1, opacity: 1, duration: 0.5, ease: "back.out(1.7)" }, 0.3);
+        }
+
+        // Headline per-word staggered reveal, power3 settle.
+        // The [[emphasis]] word reveals already accent-coloured via its .accent class.
+        tl.fromTo(words, { opacity: 0, y: 16 },
+          { opacity: 1, y: 0, duration: 0.4, ease: "power3.out", stagger: 0.1 }, 1.0);
+
+        window.__timelines["{{FRAME_ID}}"] = tl;
+      </script>
+    </template>
+  </body>
+</html>

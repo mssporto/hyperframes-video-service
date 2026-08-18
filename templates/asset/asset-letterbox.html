@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <!-- GENERIC (per-client themed) HyperFrames sub-composition template.
+         Structurally identical to hyperframes_templates/asset/asset-letterbox.html (same
+         markup, same GSAP timeline, same timing) -- ONLY colour, font, and the brand mark
+         are parameterized. See CONTRACT.md §3.1.
+         CONTENT PLACEHOLDERS (per CONTRACT.md §2):
+           {{FRAME_ID}}       unique-per-instance id
+           {{PROGRESS_PCT}}   progress-bar fill width
+           {{HEADLINE_ABOVE}} short line above the band (2-6 words); one word may be [[emphasis]]
+           {{HEADLINE_BELOW}} short line below the band (2-6 words); one word may be [[emphasis]]
+           {{ASSET_SRC}}      relative path to the portfolio image
+           {{ASSET_ALT}}      short alt text
+         THEME PLACEHOLDERS (per CONTRACT.md §3.1):
+           {{THEME_FONT_IMPORT}} {{THEME_BG}} {{THEME_TEXT}}
+           {{THEME_ACCENT}} {{THEME_ACCENT_TEXT}} {{THEME_FONT}} {{LOGO_MARKUP}} -->
+  </head>
+  <body>
+    <template>
+      <style>
+        {{THEME_FONT_IMPORT}}
+
+        :root {
+          --theme-bg: {{THEME_BG}};
+          --theme-text: {{THEME_TEXT}};
+          --theme-accent: {{THEME_ACCENT}};
+          --theme-font: {{THEME_FONT}};
+          /* translucent accent tint, derived from the single accent (match the
+             original hardcoded rgba(255,125,155,0.2) progress-track fill) */
+          --theme-accent-a20: color-mix(in srgb, var(--theme-accent) 20%, transparent);
+        }
+
+        #root {
+          position: absolute; inset: 0; width: 1080px; height: 1920px;
+          container-type: size; overflow: hidden; background: var(--theme-bg);
+          font-family: var(--theme-font); color: var(--theme-text);
+        }
+        .bg { position: absolute; inset: 0; background: var(--theme-bg); }
+
+        .brand-mark { position: absolute; top: 5cqw; left: 5cqw; width: 6cqw; height: 6cqw; }
+        .brand-mark img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: left center; }
+        .brand-mark:empty { display: none; }
+
+        .progress-track {
+          position: absolute; left: 0; right: 0; bottom: 0;
+          height: 4px; background: var(--theme-accent-a20);
+        }
+        .progress-fill { height: 100%; width: {{PROGRESS_PCT}}; background: var(--theme-accent); }
+
+        .band {
+          position: absolute; left: 0; right: 0; top: 34cqh; height: 32cqh; overflow: hidden;
+          will-change: transform; transform-origin: 50% 50%;
+        }
+        .asset-bg {
+          position: absolute; inset: 0; width: 100%; height: 100%;
+          object-fit: cover; display: block;
+          filter: blur(30px) brightness(0.55); transform: scale(1.15);
+        }
+        .asset-img {
+          position: relative; width: 100%; height: 100%;
+          object-fit: contain; display: block; border-radius: 0;
+        }
+
+        .line {
+          position: absolute; left: 8cqw; right: 8cqw; margin: 0;
+          display: flex; flex-wrap: wrap; justify-content: center; text-align: center;
+          font-weight: 700; font-size: 5.4cqw; line-height: 1.16; letter-spacing: -0.02em;
+          color: var(--theme-text);
+        }
+        .line-above { bottom: 68cqh; }
+        .line-below { top: 68cqh; }
+        .word { display: inline-block; will-change: transform, opacity; }
+        .word:not(:last-child) { margin-right: 0.3em; }
+        .word.accent { color: var(--theme-accent); }
+      </style>
+
+      <div id="root" data-composition-id="{{FRAME_ID}}" data-width="1080" data-height="1920">
+        <div class="bg"></div>
+
+        <div class="brand-mark">{{LOGO_MARKUP}}</div>
+
+        <p class="line line-above" data-role="above">{{HEADLINE_ABOVE}}</p>
+
+        <div class="band" data-role="band">
+          <img class="asset-bg" src="{{ASSET_SRC}}" alt="" aria-hidden="true" />
+          <img class="asset-img" src="{{ASSET_SRC}}" alt="{{ASSET_ALT}}" />
+        </div>
+
+        <p class="line line-below" data-role="below">{{HEADLINE_BELOW}}</p>
+
+        <div class="progress-track"><div class="progress-fill"></div></div>
+      </div>
+
+      <script>
+        function hfSplitWords(el) {
+          if (!el) return [];
+          const raw = (el.textContent || "").trim();
+          el.textContent = "";
+          const spans = [];
+          // Split on [[...]] phrase boundaries first (a bracket pair may wrap more
+          // than one word, e.g. "[[really matters]]" — every word inside one pair
+          // gets the accent). Trailing punctuation glued to the closing brackets
+          // (e.g. "[[results]],") travels with the phrase and lands on its last word.
+          const parts = raw.split(/(\[\[[\s\S]+?\]\][.,!?;:]*)/g);
+          parts.forEach((part) => {
+            if (!part) return;
+            const m = part.match(/^\[\[([\s\S]+?)\]\]([.,!?;:]*)$/);
+            if (m) {
+              const words = m[1].trim().split(/\s+/).filter(Boolean);
+              words.forEach((w, i) => {
+                const span = document.createElement("span");
+                span.className = "word accent";
+                span.textContent = w + (i === words.length - 1 ? m[2] : "");
+                el.appendChild(span);
+                spans.push(span);
+              });
+            } else {
+              part.trim().split(/\s+/).filter(Boolean).forEach((w) => {
+                const span = document.createElement("span");
+                span.className = "word";
+                span.textContent = w;
+                el.appendChild(span);
+                spans.push(span);
+              });
+            }
+          });
+          return spans;
+        }
+
+        window.__timelines = window.__timelines || {};
+        const root = document.querySelector('[data-composition-id="{{FRAME_ID}}"]');
+        const tl = gsap.timeline({ paused: true });
+
+        const aboveWords = hfSplitWords(root.querySelector('[data-role="above"]'));
+        const belowWords = hfSplitWords(root.querySelector('[data-role="below"]'));
+        const band = root.querySelector('[data-role="band"]');
+
+        // Band opens from its centre-line (scaleY 0 -> 1).
+        tl.fromTo(band, { scaleY: 0, opacity: 0 },
+          { scaleY: 1, opacity: 1, duration: 0.6, ease: "power3.out" }, 0.2);
+
+        // Lines reveal above then below.
+        tl.fromTo(aboveWords, { opacity: 0, y: 18 },
+          { opacity: 1, y: 0, duration: 0.45, ease: "power3.out", stagger: 0.08 }, 0.8);
+        tl.fromTo(belowWords, { opacity: 0, y: 18 },
+          { opacity: 1, y: 0, duration: 0.45, ease: "power3.out", stagger: 0.08 }, 1.15);
+
+        window.__timelines["{{FRAME_ID}}"] = tl;
+      </script>
+    </template>
+  </body>
+</html>

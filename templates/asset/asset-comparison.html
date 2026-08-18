@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <!-- GENERIC (per-client themed) HyperFrames sub-composition template.
+         Structurally identical to hyperframes_templates/asset/asset-comparison.html (same
+         markup, same GSAP timeline, same timing) -- ONLY colour, font, and the brand mark
+         are parameterized. A hard 50/50 split (top/bottom on 9:16): headline band over the
+         theme background on top, the portfolio asset filling the bottom half and wiping in
+         via a clip-path reveal. See CONTRACT.md §3.1.
+         CONTENT PLACEHOLDERS (per CONTRACT.md §2):
+           {{FRAME_ID}}      unique-per-instance id
+           {{PROGRESS_PCT}}  progress-bar fill width
+           {{HEADLINE}}      3-8 words; one word may be [[emphasis]] accent
+           {{ASSET_SRC}}     relative path to the portfolio image
+           {{ASSET_ALT}}     short alt text
+         THEME PLACEHOLDERS (per CONTRACT.md §3.1):
+           {{THEME_FONT_IMPORT}} {{THEME_BG}} {{THEME_TEXT}}
+           {{THEME_ACCENT}} {{THEME_ACCENT_TEXT}} {{THEME_FONT}} {{LOGO_MARKUP}} -->
+  </head>
+  <body>
+    <template>
+      <style>
+        {{THEME_FONT_IMPORT}}
+
+        :root {
+          --theme-bg: {{THEME_BG}};
+          --theme-text: {{THEME_TEXT}};
+          --theme-accent: {{THEME_ACCENT}};
+          --theme-font: {{THEME_FONT}};
+          /* translucent accent tint, derived from the single accent (match the
+             original hardcoded rgba(255,125,155,0.2) progress track -- this template's
+             only translucent-accent use) */
+          --theme-accent-a20: color-mix(in srgb, var(--theme-accent) 20%, transparent);
+        }
+
+        #root {
+          position: absolute; inset: 0; width: 1080px; height: 1920px;
+          container-type: size; overflow: hidden; background: var(--theme-bg);
+          font-family: var(--theme-font); color: var(--theme-text);
+        }
+        .bg { position: absolute; inset: 0; background: var(--theme-bg); }
+
+        .brand-mark { position: absolute; top: 5cqw; left: 5cqw; width: 6cqw; height: 6cqw; }
+        .brand-mark img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: left center; }
+        .brand-mark:empty { display: none; }
+
+        .progress-track {
+          position: absolute; left: 0; right: 0; bottom: 0;
+          height: 4px; background: var(--theme-accent-a20);
+        }
+        .progress-fill { height: 100%; width: {{PROGRESS_PCT}}; background: var(--theme-accent); }
+
+        /* top half: headline band */
+        .headline-half {
+          position: absolute; left: 0; right: 0; top: 0; height: 50cqh;
+          display: flex; align-items: center; justify-content: center; padding: 0 8cqw;
+        }
+        .headline {
+          margin: 0; display: flex; flex-wrap: wrap; justify-content: center; text-align: center;
+          font-weight: 700; font-size: 6.4cqw; line-height: 1.14; letter-spacing: -0.02em;
+          color: var(--theme-text);
+        }
+        .word { display: inline-block; will-change: transform, opacity; }
+        .word:not(:last-child) { margin-right: 0.3em; }
+        .word.accent { color: var(--theme-accent); }
+
+        /* the accent seam between the halves */
+        .seam {
+          position: absolute; left: 0; right: 0; top: 50cqh; height: 4px;
+          background: var(--theme-accent); transform: scaleX(0); transform-origin: left center;
+        }
+
+        /* bottom half: asset */
+        .asset-half {
+          position: absolute; left: 0; right: 0; top: 50cqh; bottom: 0; overflow: hidden;
+        }
+        .asset-bg {
+          position: absolute; inset: 0; width: 100%; height: 100%;
+          object-fit: cover; display: block;
+          filter: blur(30px) brightness(0.55); transform: scale(1.15);
+        }
+        .asset-img {
+          position: relative; width: 100%; height: 100%;
+          object-fit: contain; display: block; border-radius: 0;
+          will-change: clip-path, transform;
+        }
+      </style>
+
+      <div id="root" data-composition-id="{{FRAME_ID}}" data-width="1080" data-height="1920">
+        <div class="bg"></div>
+
+        <div class="brand-mark">{{LOGO_MARKUP}}</div>
+
+        <div class="headline-half">
+          <p class="headline" data-role="headline">{{HEADLINE}}</p>
+        </div>
+
+        <div class="seam" data-role="seam"></div>
+
+        <div class="asset-half">
+          <img class="asset-bg" src="{{ASSET_SRC}}" alt="" aria-hidden="true" />
+          <img class="asset-img" data-role="asset" src="{{ASSET_SRC}}" alt="{{ASSET_ALT}}" />
+        </div>
+
+        <div class="progress-track"><div class="progress-fill"></div></div>
+      </div>
+
+      <script>
+        function hfSplitWords(el) {
+          if (!el) return [];
+          const raw = (el.textContent || "").trim();
+          el.textContent = "";
+          const spans = [];
+          // Split on [[...]] phrase boundaries first (a bracket pair may wrap more
+          // than one word, e.g. "[[really matters]]" — every word inside one pair
+          // gets the accent). Trailing punctuation glued to the closing brackets
+          // (e.g. "[[results]],") travels with the phrase and lands on its last word.
+          const parts = raw.split(/(\[\[[\s\S]+?\]\][.,!?;:]*)/g);
+          parts.forEach((part) => {
+            if (!part) return;
+            const m = part.match(/^\[\[([\s\S]+?)\]\]([.,!?;:]*)$/);
+            if (m) {
+              const words = m[1].trim().split(/\s+/).filter(Boolean);
+              words.forEach((w, i) => {
+                const span = document.createElement("span");
+                span.className = "word accent";
+                span.textContent = w + (i === words.length - 1 ? m[2] : "");
+                el.appendChild(span);
+                spans.push(span);
+              });
+            } else {
+              part.trim().split(/\s+/).filter(Boolean).forEach((w) => {
+                const span = document.createElement("span");
+                span.className = "word";
+                span.textContent = w;
+                el.appendChild(span);
+                spans.push(span);
+              });
+            }
+          });
+          return spans;
+        }
+
+        window.__timelines = window.__timelines || {};
+        const root = document.querySelector('[data-composition-id="{{FRAME_ID}}"]');
+        const tl = gsap.timeline({ paused: true });
+
+        const words = hfSplitWords(root.querySelector('[data-role="headline"]'));
+        const seam = root.querySelector('[data-role="seam"]');
+        const asset = root.querySelector('[data-role="asset"]');
+
+        // Headline reveals on the top half.
+        tl.fromTo(words, { opacity: 0, y: 20 },
+          { opacity: 1, y: 0, duration: 0.45, ease: "power3.out", stagger: 0.08 }, 0.0);
+
+        // Accent seam sweeps across, then the asset wipes down from the seam.
+        tl.fromTo(seam, { scaleX: 0 },
+          { scaleX: 1, duration: 0.4, ease: "power2.out" }, 0.7);
+        tl.fromTo(asset, { clipPath: "inset(0 0 100% 0)" },
+          { clipPath: "inset(0 0 0% 0)", duration: 0.7, ease: "power3.out" }, 0.9);
+
+        window.__timelines["{{FRAME_ID}}"] = tl;
+      </script>
+    </template>
+  </body>
+</html>

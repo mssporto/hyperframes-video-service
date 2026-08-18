@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <!-- GENERIC (per-client themed) HyperFrames sub-composition template.
+         Structurally identical to hyperframes_templates/body/body-split-contrast.html
+         (same markup, same GSAP timeline, same timing) -- ONLY colour, font, and the
+         brand mark are parameterized. NOTE: clause-a uses the graphite secondary colour
+         (--theme-lead-text), same as close-social-proof's .lead -- this template also
+         needs that token, not just close-social-proof. See CONTRACT.md §3.1.
+         CONTENT PLACEHOLDERS (per CONTRACT.md §2):
+           {{FRAME_ID}}      unique-per-instance id
+           {{PROGRESS_PCT}}  progress-bar fill width
+           {{CLAUSE_A}}      the setup clause (upper), lands in the lead/secondary colour
+           {{CLAUSE_B}}      the turn clause (lower), lands in the text colour; one word may be [[emphasis]]
+         THEME PLACEHOLDERS (per CONTRACT.md §3.1):
+           {{THEME_FONT_IMPORT}} {{THEME_BG}} {{THEME_TEXT}} {{THEME_LEAD_TEXT}}
+           {{THEME_ACCENT}} {{THEME_ACCENT_TEXT}} {{THEME_FONT}} {{LOGO_MARKUP}} -->
+  </head>
+  <body>
+    <template>
+      <style>
+        {{THEME_FONT_IMPORT}}
+
+        :root {
+          --theme-bg: {{THEME_BG}};
+          --theme-text: {{THEME_TEXT}};
+          --theme-lead-text: {{THEME_LEAD_TEXT}};
+          --theme-accent: {{THEME_ACCENT}};
+          --theme-font: {{THEME_FONT}};
+          --theme-accent-a20: color-mix(in srgb, var(--theme-accent) 20%, transparent);
+        }
+
+        #root {
+          position: absolute; inset: 0; width: 1080px; height: 1920px;
+          container-type: size; overflow: hidden; background: var(--theme-bg);
+          font-family: var(--theme-font); color: var(--theme-text);
+        }
+        .bg { position: absolute; inset: 0; background: var(--theme-bg); }
+
+        .brand-mark { position: absolute; top: 5cqw; left: 5cqw; width: 6cqw; height: 6cqw; }
+        .brand-mark img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: left center; }
+        .brand-mark:empty { display: none; }
+
+        .progress-track {
+          position: absolute; left: 0; right: 0; bottom: 0;
+          height: 4px; background: var(--theme-accent-a20);
+        }
+        .progress-fill { height: 100%; width: {{PROGRESS_PCT}}; background: var(--theme-accent); }
+
+        .stage {
+          position: absolute; left: 50%; top: 48%;
+          transform: translate(-50%, -50%);
+          display: flex; flex-direction: column; align-items: center;
+          gap: 4cqh; width: 84cqw;
+        }
+        .clause {
+          margin: 0; display: flex; flex-wrap: wrap; justify-content: center;
+          text-align: center; font-size: 6.1cqw; line-height: 1.15;
+          letter-spacing: -0.02em;
+        }
+        .clause-a { font-weight: 600; color: var(--theme-lead-text); }
+        .clause-b { font-weight: 700; color: var(--theme-text); }
+        .word { display: inline-block; will-change: transform, opacity; }
+        .word:not(:last-child) { margin-right: 0.3em; }
+        .word.accent { color: var(--theme-accent); }
+
+        .divider-svg { display: block; width: 60px; height: 4px; overflow: visible; }
+        .divider-svg line { stroke: var(--theme-accent); stroke-width: 4; stroke-linecap: square; }
+      </style>
+
+      <div id="root" data-composition-id="{{FRAME_ID}}" data-width="1080" data-height="1920">
+        <div class="bg"></div>
+
+        <div class="brand-mark">{{LOGO_MARKUP}}</div>
+
+        <div class="stage">
+          <p class="clause clause-a" data-role="a">{{CLAUSE_A}}</p>
+          <svg class="divider-svg" viewBox="0 0 60 4">
+            <line class="divider-stroke" x1="2" y1="2" x2="58" y2="2" />
+          </svg>
+          <p class="clause clause-b" data-role="b">{{CLAUSE_B}}</p>
+        </div>
+
+        <div class="progress-track"><div class="progress-fill"></div></div>
+      </div>
+
+      <script>
+        function hfSplitWords(el) {
+          if (!el) return [];
+          const raw = (el.textContent || "").trim();
+          el.textContent = "";
+          const spans = [];
+          // Split on [[...]] phrase boundaries first (a bracket pair may wrap more
+          // than one word, e.g. "[[really matters]]" — every word inside one pair
+          // gets the accent). Trailing punctuation glued to the closing brackets
+          // (e.g. "[[results]],") travels with the phrase and lands on its last word.
+          const parts = raw.split(/(\[\[[\s\S]+?\]\][.,!?;:]*)/g);
+          parts.forEach((part) => {
+            if (!part) return;
+            const m = part.match(/^\[\[([\s\S]+?)\]\]([.,!?;:]*)$/);
+            if (m) {
+              const words = m[1].trim().split(/\s+/).filter(Boolean);
+              words.forEach((w, i) => {
+                const span = document.createElement("span");
+                span.className = "word accent";
+                span.textContent = w + (i === words.length - 1 ? m[2] : "");
+                el.appendChild(span);
+                spans.push(span);
+              });
+            } else {
+              part.trim().split(/\s+/).filter(Boolean).forEach((w) => {
+                const span = document.createElement("span");
+                span.className = "word";
+                span.textContent = w;
+                el.appendChild(span);
+                spans.push(span);
+              });
+            }
+          });
+          return spans;
+        }
+
+        window.__timelines = window.__timelines || {};
+        const root = document.querySelector('[data-composition-id="{{FRAME_ID}}"]');
+        const tl = gsap.timeline({ paused: true });
+
+        const aWords = hfSplitWords(root.querySelector('[data-role="a"]'));
+        const bWords = hfSplitWords(root.querySelector('[data-role="b"]'));
+        const divEl = root.querySelector(".divider-stroke");
+        const divLen = divEl.getTotalLength();
+        divEl.style.strokeDasharray = "" + divLen;
+        divEl.style.strokeDashoffset = "" + divLen;
+
+        // Clause A (setup) reveals in the lead colour, per-word stagger.
+        tl.fromTo(aWords, { opacity: 0, y: 20 },
+          { opacity: 1, y: 0, duration: 0.45, ease: "power3.out", stagger: 0.09 }, 0.0);
+
+        // The accent divider draws — the pivot between setup and turn.
+        tl.to(divEl, { strokeDashoffset: 0, duration: 0.35, ease: "power2.out" }, 1.1);
+
+        // Clause B (turn) reveals in the text colour beneath, the emphasis word already accent.
+        tl.fromTo(bWords, { opacity: 0, y: 20 },
+          { opacity: 1, y: 0, duration: 0.45, ease: "power3.out", stagger: 0.09 }, 1.5);
+
+        window.__timelines["{{FRAME_ID}}"] = tl;
+      </script>
+    </template>
+  </body>
+</html>
