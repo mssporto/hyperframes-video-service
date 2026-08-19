@@ -138,9 +138,8 @@ included) needs to replicate.
 n8n can't run this repo's Python directly, so replicate the same 4 steps as
 HTTP calls. Every HTTP Request node below must send
 `Authorization: Bearer <token>` (the `hyperframes-video-auth-token` secret's
-`AUTH_TOKEN` value) -- the deployed service returns 401 without it. The
-shipped `examples/n8n_workflow.json` stores that token in the `Video Brief`
-node's `auth_token` field and wires it into every call already.
+`AUTH_TOKEN` value, held in a Set node or n8n credential of your choice) --
+the deployed service returns 401 without it.
 
 1. **Write the plan.** An HTTP Request node (or an AI Agent node) that calls
    your LLM provider with the *same* system prompt shape as
