@@ -41,12 +41,14 @@ the deployed service also exposes a `/build` endpoint that does the same
 ## Repo layout
 
 ```
+frame.md                           # brand source of truth -- see "Brand spec" below
 builder/
   hyperframes_project_builder.py   # deterministic template assembler (no LLM)
   video_writer.py                  # brief -> video plan, via LLM
   video_theme.py                   # brand colours/font/logo -> theme tokens
   theme_common.py                  # WCAG-AA contrast maths
   llm_providers/                   # openrouter.py, fal.py -- swap by string
+  audio/                           # bundled royalty-free BGM (see "Audio" below)
 templates/
   body/ asset/ closing/            # 14 theme-driven HyperFrames templates
   CONTRACT.md                      # the full template/placeholder spec
@@ -55,6 +57,28 @@ service/
 examples/
   generate_short.py                # CLI reference: brief -> rendered MP4, end to end
 ```
+
+## Brand spec (`frame.md`)
+
+[`frame.md`](frame.md) is this project's brand source of truth, in the
+format the wider HyperFrames skill ecosystem already knows to look for
+(`hyperframes-creative`, `faceless-explainer`, and friends all resolve
+`frame.md` → `design.md` → `DESIGN.md` automatically). It's YAML frontmatter
+(colors, typography, spacing, components -- the normative values) plus a
+markdown body (Overview, Colors, Typography, Frame Treatments, Do/Don't,
+Known Gaps -- the *why*, and the decisions/divergences that shouldn't get
+silently "fixed" later).
+
+It documents the current dahiana.work theme (cream ground, near-black text,
+royal-blue accent, Archivo, the site's real 64px hairline grid, the logo) --
+derived from `dahiana_work/design.md` and the live site's `tokens.css`, not
+invented. **It is documentation, not wiring**: nothing in this repo reads
+`frame.md` automatically yet. `builder/video_theme.py::DEFAULT_THEME` and the
+shipped n8n workflow's `Video Brief` node still carry their own values
+independently -- see `frame.md`'s own "Known Gaps" section. A theme dict can
+be derived from it by hand in one small script (parse the frontmatter YAML,
+map `colors`/`typography.fontFamily` onto the `builder.video_theme` theme
+shape) whenever you want a single source instead of duplicated values.
 
 ## Setup
 
