@@ -127,6 +127,26 @@ style (not just different colours), that's a second template set: copy
 `templates/` to a sibling directory, edit the markup/animation freely, and
 point a modified `hyperframes_project_builder.TEMPLATES_DIR` at it.
 
+## Audio
+
+`builder/audio/` holds one bundled background-music bed: "Technology - Tech
+Technology 90 Second" by BombinSound (Pixabay Content License — free for
+commercial use, no attribution required, **not** registered with YouTube
+Content ID, so it won't trigger a claim on upload). It's mounted into the
+Modal image the same way `templates/` is (via `add_local_dir` in
+`service/app.py`), so a request can reference it by its in-container path:
+
+```json
+"audio": { "bed_path": "/root/builder/audio/bombinsound-technology-tech-technology-90-second-499581.mp3", "bed_volume": 0.5 }
+```
+
+Add more tracks the same way -- drop an MP3 in `builder/audio/`, redeploy
+(`modal app stop` then `modal deploy` so a warm container doesn't serve the
+old mount), and reference its new `/root/builder/audio/<file>.mp3` path.
+`bed_path`/`outro_path` only accept a path that's actually mounted in the
+container; there's no way to pass arbitrary audio bytes inline (unlike
+`asset_base64` for images) as of this writing.
+
 ## What's intentionally NOT included
 
 - No client/tenant config system, no multi-brand switching -- this is a
@@ -134,6 +154,7 @@ point a modified `hyperframes_project_builder.TEMPLATES_DIR` at it.
 - No publishing step (YouTube/Metricool/etc.) -- this repo's job ends at "a
   rendered MP4 on disk" or "a rendered MP4 in Modal's volume." Publishing is
   a separate concern for your n8n workflow to own.
-- No bundled brand assets (icons, bed music, logos). `builder/hyperframes_project_builder.py`'s
-  `icon_library`/`icon_sfx`/`audio` plan keys still work if you supply your
-  own files at request time -- there's just nothing baked in by default.
+- No bundled brand assets besides the one BGM track above (icons, SFX,
+  logos). `builder/hyperframes_project_builder.py`'s `icon_library`/`icon_sfx`
+  plan keys still work if you supply your own files at request time --
+  there's just nothing else baked in by default.

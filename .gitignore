@@ -5,3 +5,7 @@ __pycache__/
 *.zip
 .env
 .tmp/
+
+.agents/
+.DS_Store
+.claude/
