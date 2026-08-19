@@ -10,7 +10,7 @@ the render job itself go to Modal.
 
 Usage:
     export OPENROUTER_API_KEY=...
-    export HYPERFRAMES_SERVICE_URL=https://you--hyperframes-video-create.modal.run
+    export HYPERFRAMES_SERVICE_URL=https://YOUR-MODAL-WORKSPACE--hyperframes-video-create.modal.run
     # (status/result/delete are the same base URL with -status/-result/-delete)
     export HYPERFRAMES_AUTH_TOKEN=...   # the hyperframes-video-auth-token secret's AUTH_TOKEN value
     python examples/generate_short.py --topic "why most onboarding emails get ignored"
@@ -37,8 +37,8 @@ def _service_url(function_name):
     """Derive a sibling endpoint URL from HYPERFRAMES_SERVICE_URL, which you
     should set to the `create` endpoint's URL (they all share everything but
     the trailing function name), e.g.
-    https://you--hyperframes-video-create.modal.run ->
-    https://you--hyperframes-video-status.modal.run
+    https://YOUR-MODAL-WORKSPACE--hyperframes-video-create.modal.run ->
+    https://YOUR-MODAL-WORKSPACE--hyperframes-video-status.modal.run
     """
     base = os.environ["HYPERFRAMES_SERVICE_URL"]
     return base.replace("-create.modal.run", f"-{function_name}.modal.run")
