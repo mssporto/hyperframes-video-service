@@ -11,6 +11,10 @@ separate "house style" template set to fall back to. A theme is a plain dict:
     accent_text  text/icon colour ON accent    (AA-enforced vs accent)
     font_family  brand typeface (CSS value)
     logo_url     a real logo URL, or "" for no logo
+    bg_pattern   OPTIONAL: a CSS `background-image` value layered over `bg`
+                 (e.g. a repeating-linear-gradient for ruled paper). "none" or
+                 omitted means a flat, untextured ground -- never proposed by
+                 the LLM path (derive_theme), only ever hand-authored.
 
 An LLM can propose bg/text/accent/font from free-text brand guidelines
 (derive_theme, below); deterministic code then GUARANTEES every
@@ -38,6 +42,7 @@ DEFAULT_THEME = {
     "accent_text": "#FFFFFF",
     "font_family": "Inter, ui-sans-serif, system-ui, sans-serif",
     "logo_url": "",
+    "bg_pattern": "none",
 }
 
 _FONT_GENERICS = {
@@ -103,6 +108,7 @@ def enforce_readable_theme(proposed):
         "accent": proposed["accent"],
         "accent_text": _readable_text_for(proposed["accent"], proposed.get("accent_text")),
         "font_family": proposed["font_family"],
+        "bg_pattern": proposed.get("bg_pattern", "none"),
     }
 
 
@@ -143,6 +149,7 @@ def theme_tokens(theme):
         "THEME_FONT": theme["font_family"],
         "THEME_FONT_IMPORT": font_import_statement(theme["font_family"]),
         "LOGO_MARKUP": logo_markup(theme.get("logo_url", "")),
+        "THEME_BG_PATTERN": theme.get("bg_pattern") or "none",
     }
 
 
