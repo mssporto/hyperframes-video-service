@@ -1,8 +1,8 @@
 ---
 version: alpha
-name: dahiana.work — Frame (video / frame layer)
+name: Example Brand — Frame (video / frame layer)
 description: >
-  Video-first companion to dahiana.work's design.md. The unit is the frame
+  Video-first companion to the example brand's design.md. The unit is the frame
   (1080×1920, vertical short-form only). Atoms carried over verbatim from the
   live site: cream ground, near-black ink, one royal-blue accent, Archivo
   throughout, and the site's real 64px hairline grid as atmosphere. Unlike a
@@ -23,7 +23,7 @@ colors:
   accent: "#1d4ed8"
   accent-text: "#ffffff"
   grid-line: "#e6e3dc"
-  logo-url: "https://lh3.googleusercontent.com/d/1Q1JyZFJ21O9sfUmPsbSMlj_pzR7SX2mb"
+  logo-url: "https://lh3.googleusercontent.com/d/YOUR_DRIVE_LOGO_FILE_ID"
 
 typography:
   fontFamily: "Archivo, sans-serif"
@@ -83,11 +83,11 @@ components:
     description: "The [[double-bracket]] marker inside any text token. One run per line, max. This is the system's only in-line color accent — there is no separate highlight template."
 ---
 
-# dahiana.work — Frame (video / frame layer)
+# Example Brand — Frame (video / frame layer)
 
 ## Overview
 
-This is the frame-scale companion to [`dahiana_work/design.md`](../dahiana_work/design.md) — I read it, plus the site's live `tokens.css`/`BaseLayout.astro`, to derive the values here, rather than inventing a "video-appropriate" palette. Per the consumption contract this format follows (`hyperframes-creative/references/video-composition.md`): **colors, fonts, and Do's/Don'ts are strict — carried over from the site exactly; only scale, spacing, and per-template application are adapted for video.** Where video numbers diverge from the site's web numbers, that's called out explicitly below, not smoothed over.
+This is the frame-scale companion to your project's own `design.md` — I read it, plus the site's live `tokens.css`/`BaseLayout.astro`, to derive the values here, rather than inventing a "video-appropriate" palette. Per the consumption contract this format follows (`hyperframes-creative/references/video-composition.md`): **colors, fonts, and Do's/Don'ts are strict — carried over from the site exactly; only scale, spacing, and per-template application are adapted for video.** Where video numbers diverge from the site's web numbers, that's called out explicitly below, not smoothed over.
 
 The frame is **cream and ink, one accent, one font.** Cream (`#f1efea`) and near-black (`#131410`) do the work everywhere; royal blue (`#1d4ed8`) is the single accent — for emphasis words, the progress bar, and the one solid CTA rectangle — never a second color, never a fill with the wrong text color on top. Archivo carries every size, headline to CTA button, matching the site's "one font for the entire site" rule. The only atmosphere is the site's real 64px hairline grid; it's texture, not a second background to design against.
 
@@ -186,7 +186,7 @@ Not applicable — this repo renders 1080×1920 only. If a 16:9 or 1:1 variant i
 
 ## Approved Entities
 
-**None are defined for this brand.** dahiana.work's `design.md` names no client roster or awards list (unlike the multi-client system this repo was extracted from, which had a real "Approved Entities" list to draw `close-social-proof` from). Until real names exist: skip `close-social-proof` entirely, exactly as the current n8n agent prompt already does — never fabricate a client or award name to fill the template.
+**None are defined for this brand.** This brand's `design.md` names no client roster or awards list (unlike the multi-client system this repo was extracted from, which had a real "Approved Entities" list to draw `close-social-proof` from). Until real names exist: skip `close-social-proof` entirely, exactly as the current n8n agent prompt already does — never fabricate a client or award name to fill the template.
 
 ## Numerals & Claims
 

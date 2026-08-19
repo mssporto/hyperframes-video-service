@@ -18,15 +18,46 @@ No client/tenant concept lives here: theme, audio, icons, and icon SFX are
 either supplied explicitly in the request body or simply omitted (the
 project renders without them). See ../builder/video_theme.py for a plain
 neutral default theme, and ../README.md for the end-to-end flow.
+
+Every endpoint below requires `Authorization: Bearer <token>` (see
+AUTH_SECRET_NAME) -- Modal web endpoints are public URLs by default, so
+without this any caller with the link could run renders on your compute or
+read/delete job records.
 """
 
 import os
 
 import modal
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+# Not `from fastapi import status` -- one of our own endpoint functions below
+# is itself named `status`, which would shadow the fastapi module's `status`
+# at module scope and break this exact check with an AttributeError.
+_HTTP_401_UNAUTHORIZED = 401
 
 # Change this if you want a different Modal app name. Whatever you pick, it's
 # yours -- there's no other service in this repo to collide with.
 app = modal.App("hyperframes-video")
+
+# Every HTTP endpoint below requires `Authorization: Bearer <token>` matching
+# this Modal Secret's AUTH_TOKEN value (same convention as this account's other
+# services, e.g. render-auth-token). Modal endpoints are public URLs by
+# default -- anyone with the link can call them, run renders on your compute,
+# or read/delete job records -- so every endpoint pulls this secret in and
+# checks it before doing anything else.
+#   modal secret create hyperframes-video-auth-token AUTH_TOKEN=<a random string> -e dev
+AUTH_SECRET_NAME = "hyperframes-video-auth-token"
+auth_scheme = HTTPBearer()
+
+
+def _require_auth(token: HTTPAuthorizationCredentials) -> None:
+    if token.credentials != os.environ["AUTH_TOKEN"]:
+        raise HTTPException(
+            status_code=_HTTP_401_UNAUTHORIZED,
+            detail="Incorrect bearer token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 # Persistent job state: jobId → { status, outputName, renderMs, sizeMb, error, submittedAt }.
 # A modal.Dict is the cross-invocation store: the `create` endpoint, the spawned
@@ -239,9 +270,14 @@ def _find_project_root(base_dir: str):
 
 # ── HTTP endpoints ────────────────────────────────────────────────────────────
 
-@app.function(image=build_image, timeout=30, scaledown_window=300)
+@app.function(
+    image=build_image,
+    timeout=30,
+    scaledown_window=300,
+    secrets=[modal.Secret.from_name(AUTH_SECRET_NAME)],
+)
 @modal.fastapi_endpoint(method="POST")
-def build(item: dict):
+def build(item: dict, token: HTTPAuthorizationCredentials = Depends(auth_scheme)):
     """
     Bridge a "video plan" (asset bytes inline, never a local path) into a
     project zip that `create` above accepts unchanged.
@@ -297,7 +333,7 @@ def build(item: dict):
     import sys
     import uuid
 
-    from fastapi import HTTPException
+    _require_auth(token)
 
     # /root is where build_image's add_local_dir mounts `builder/` and
     # `templates/` (see build_image above) -- needed for the `import builder...`
@@ -386,9 +422,14 @@ def build(item: dict):
             pass
 
 
-@app.function(image=image, timeout=30, scaledown_window=300)
+@app.function(
+    image=image,
+    timeout=30,
+    scaledown_window=300,
+    secrets=[modal.Secret.from_name(AUTH_SECRET_NAME)],
+)
 @modal.fastapi_endpoint(method="POST")
-def create(item: dict):
+def create(item: dict, token: HTTPAuthorizationCredentials = Depends(auth_scheme)):
     """
     Submit a render job. Returns immediately with a jobId; the render runs in a
     spawned background function (see render_job) because it far outlasts the HTTP
@@ -412,6 +453,8 @@ def create(item: dict):
 
     from fastapi import HTTPException
 
+    _require_auth(token)
+
     project_zip_b64 = item.get("projectZipBase64")
     if not project_zip_b64 or not isinstance(project_zip_b64, str):
         raise HTTPException(status_code=400, detail="Missing required field: projectZipBase64 (base64-encoded project zip)")
@@ -432,9 +475,14 @@ def create(item: dict):
     return {"jobId": job_id, "status": "pending"}
 
 
-@app.function(image=image, timeout=30, scaledown_window=300)
+@app.function(
+    image=image,
+    timeout=30,
+    scaledown_window=300,
+    secrets=[modal.Secret.from_name(AUTH_SECRET_NAME)],
+)
 @modal.fastapi_endpoint(method="GET")
-def status(job_id: str):
+def status(job_id: str, token: HTTPAuthorizationCredentials = Depends(auth_scheme)):
     """
     Poll job status.
 
@@ -444,6 +492,8 @@ def status(job_id: str):
     """
     from fastapi import HTTPException
 
+    _require_auth(token)
+
     try:
         info = dict(job_store[job_id])
     except KeyError:
@@ -451,9 +501,15 @@ def status(job_id: str):
     return {"jobId": job_id, **info}
 
 
-@app.function(image=image, timeout=60, volumes={"/renders": video_volume}, scaledown_window=300)
+@app.function(
+    image=image,
+    timeout=60,
+    volumes={"/renders": video_volume},
+    scaledown_window=300,
+    secrets=[modal.Secret.from_name(AUTH_SECRET_NAME)],
+)
 @modal.fastapi_endpoint(method="GET")
-def result(job_id: str):
+def result(job_id: str, token: HTTPAuthorizationCredentials = Depends(auth_scheme)):
     """
     Download the rendered MP4.
 
@@ -463,6 +519,8 @@ def result(job_id: str):
     """
     from fastapi import HTTPException
     from fastapi.responses import JSONResponse, Response
+
+    _require_auth(token)
 
     try:
         info = dict(job_store[job_id])
@@ -491,9 +549,15 @@ def result(job_id: str):
     )
 
 
-@app.function(image=image, timeout=30, volumes={"/renders": video_volume}, scaledown_window=300)
+@app.function(
+    image=image,
+    timeout=30,
+    volumes={"/renders": video_volume},
+    scaledown_window=300,
+    secrets=[modal.Secret.from_name(AUTH_SECRET_NAME)],
+)
 @modal.fastapi_endpoint(method="DELETE")
-def delete(job_id: str):
+def delete(job_id: str, token: HTTPAuthorizationCredentials = Depends(auth_scheme)):
     """
     Delete a rendered video and its job record to free storage. Safe to call on
     a failed or still-pending job (there's just no file to remove in that case).
@@ -504,6 +568,8 @@ def delete(job_id: str):
     import os
 
     from fastapi import HTTPException
+
+    _require_auth(token)
 
     try:
         info = dict(job_store[job_id])

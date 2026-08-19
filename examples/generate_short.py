@@ -12,6 +12,7 @@ Usage:
     export OPENROUTER_API_KEY=...
     export HYPERFRAMES_SERVICE_URL=https://you--hyperframes-video-create.modal.run
     # (status/result/delete are the same base URL with -status/-result/-delete)
+    export HYPERFRAMES_AUTH_TOKEN=...   # the hyperframes-video-auth-token secret's AUTH_TOKEN value
     python examples/generate_short.py --topic "why most onboarding emails get ignored"
 
 Requires: pip install httpx
@@ -57,6 +58,11 @@ def main():
     if not api_key:
         sys.exit(f"Set {args.provider.upper()}_API_KEY")
 
+    auth_token = os.environ.get("HYPERFRAMES_AUTH_TOKEN")
+    if not auth_token:
+        sys.exit("Set HYPERFRAMES_AUTH_TOKEN (the hyperframes-video-auth-token secret's AUTH_TOKEN value)")
+    auth_headers = {"Authorization": f"Bearer {auth_token}"}
+
     print("Writing video plan...")
     plan = generate_video(
         brief={"topic": args.topic},
@@ -80,6 +86,7 @@ def main():
     resp = httpx.post(
         _service_url("create"),
         json={"projectZipBase64": zip_b64, "outputName": os.path.basename(args.output)},
+        headers=auth_headers,
         timeout=30.0,
     )
     resp.raise_for_status()
@@ -88,7 +95,7 @@ def main():
 
     print("Waiting for render...")
     while True:
-        resp = httpx.get(_service_url("status"), params={"job_id": job_id}, timeout=30.0)
+        resp = httpx.get(_service_url("status"), params={"job_id": job_id}, headers=auth_headers, timeout=30.0)
         resp.raise_for_status()
         info = resp.json()
         if info["status"] == "complete":
@@ -98,13 +105,13 @@ def main():
         time.sleep(5)
 
     print("Downloading MP4...")
-    resp = httpx.get(_service_url("result"), params={"job_id": job_id}, timeout=60.0)
+    resp = httpx.get(_service_url("result"), params={"job_id": job_id}, headers=auth_headers, timeout=60.0)
     resp.raise_for_status()
     with open(args.output, "wb") as f:
         f.write(resp.content)
     print(f"Done -> {args.output} ({info['sizeMb']} MB, {info['renderMs']}ms)")
 
-    httpx.delete(_service_url("delete"), params={"job_id": job_id}, timeout=30.0)
+    httpx.delete(_service_url("delete"), params={"job_id": job_id}, headers=auth_headers, timeout=30.0)
 
 
 if __name__ == "__main__":

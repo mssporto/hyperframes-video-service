@@ -69,10 +69,11 @@ markdown body (Overview, Colors, Typography, Frame Treatments, Do/Don't,
 Known Gaps -- the *why*, and the decisions/divergences that shouldn't get
 silently "fixed" later).
 
-It documents the current dahiana.work theme (cream ground, near-black text,
-royal-blue accent, Archivo, the site's real 64px hairline grid, the logo) --
-derived from `dahiana_work/design.md` and the live site's `tokens.css`, not
-invented. **It is documentation, not wiring**: nothing in this repo reads
+`frame.md` as shipped is an *example* theme (cream ground, near-black text,
+royal-blue accent, Archivo, a hairline grid, a placeholder logo) -- derive
+your own the same way it was: read your project's `design.md` and your live
+site's real CSS tokens, not an invented "video-appropriate" palette. **It is
+documentation, not wiring**: nothing in this repo reads
 `frame.md` automatically yet. `builder/video_theme.py::DEFAULT_THEME` and the
 shipped n8n workflow's `Video Brief` node still carry their own values
 independently -- see `frame.md`'s own "Known Gaps" section. A theme dict can
@@ -86,19 +87,30 @@ shape) whenever you want a single source instead of duplicated values.
    Modal account -- this deploys a brand-new app, `hyperframes-video` by
    default, with its own job store and output volume; nothing here can
    collide with any other Modal app you have).
-2. **Deploy the render service.**
+2. **Create the auth secret.** Every endpoint below requires
+   `Authorization: Bearer <token>` -- Modal web endpoints are public URLs by
+   default, so without this, anyone with the link could run renders on your
+   compute or read/delete job records. Pick your own random token value (e.g.
+   `openssl rand -hex 32`) and store it as a Modal Secret named
+   `hyperframes-video-auth-token` with key `AUTH_TOKEN`:
+   ```bash
+   modal secret create hyperframes-video-auth-token AUTH_TOKEN=<your random token> -e dev
+   ```
+3. **Deploy the render service.**
    ```bash
    cd hyperframes-video-service
    modal deploy -e dev service/app.py    # sandbox environment
    modal deploy service/app.py           # or straight to your "main" env
    ```
    Modal prints the deployed URLs for `build`/`create`/`status`/`result`/`delete`.
-3. **An LLM API key.** `builder/llm_providers/` ships OpenRouter and fal.ai
+   If you redeploy to a different environment (`main`), create the same
+   secret there too -- each environment has its own secret store.
+4. **An LLM API key.** `builder/llm_providers/` ships OpenRouter and fal.ai
    providers (same `call(api_key, model, system, prompt, timeout) -> str`
    shape) -- set `OPENROUTER_API_KEY` or `FAL_API_KEY` wherever you run the
    writing step. Add a new provider by dropping one more module in
    `builder/llm_providers/` with the same shape.
-4. **(Optional) a brand theme.** Skip this to render with
+5. **(Optional) a brand theme.** Skip this to render with
    `builder/video_theme.py::DEFAULT_THEME` (dark background, white text, a
    plain blue accent, no logo). To use your own colours/font/logo, either
    build a theme dict by hand (see the fields in `video_theme.py`'s
@@ -113,6 +125,7 @@ shape) whenever you want a single source instead of duplicated values.
 pip install -r requirements.txt
 export OPENROUTER_API_KEY=...
 export HYPERFRAMES_SERVICE_URL=https://<your-modal-url>-create.modal.run
+export HYPERFRAMES_AUTH_TOKEN=...   # the hyperframes-video-auth-token secret's AUTH_TOKEN value
 python examples/generate_short.py --topic "why most onboarding emails get ignored" --cta "yoursite.com"
 ```
 
@@ -123,7 +136,11 @@ included) needs to replicate.
 ## Wiring into n8n
 
 n8n can't run this repo's Python directly, so replicate the same 4 steps as
-HTTP calls:
+HTTP calls. Every HTTP Request node below must send
+`Authorization: Bearer <token>` (the `hyperframes-video-auth-token` secret's
+`AUTH_TOKEN` value) -- the deployed service returns 401 without it. The
+shipped `examples/n8n_workflow.json` stores that token in the `Video Brief`
+node's `auth_token` field and wires it into every call already.
 
 1. **Write the plan.** An HTTP Request node (or an AI Agent node) that calls
    your LLM provider with the *same* system prompt shape as
