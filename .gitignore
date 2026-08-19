@@ -9,3 +9,4 @@ __pycache__/
 .agents/
 .DS_Store
 .claude/
+skills-lock.json
