@@ -23,7 +23,7 @@ colors:
   accent: "#1d4ed8"
   accent-text: "#ffffff"
   grid-line: "#e6e3dc"
-  logo-url: "https://lh3.googleusercontent.com/d/YOUR_DRIVE_LOGO_FILE_ID"
+  logo-url: "https://example.com/your-logo.png"
 
 typography:
   fontFamily: "Archivo, sans-serif"
