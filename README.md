@@ -129,6 +129,19 @@ point a modified `hyperframes_project_builder.TEMPLATES_DIR` at it.
 
 ## Audio
 
+**Use it, but design as if it's off.** A large share of Shorts/Reels traffic
+watches muted (autoplay-without-sound is the default on most feeds), so
+every video this repo produces has to be fully understandable with the
+sound OFF -- that's *why* the templates are kinetic on-screen text, not a
+voiceover-dependent format. Audio here is an ambiance/production-value
+layer, not the delivery mechanism for information. Concretely: never write
+a frame whose only content is spoken; the `HEADLINE`/`LINE_1`/etc. text
+tokens are the actual message, always. Treat a bed track as raising
+watch-time and perceived polish for the (still large) share of viewers who
+do have sound on -- not as something the video depends on to make sense.
+
+### How it's used
+
 `builder/audio/` holds one bundled background-music bed: "Technology - Tech
 Technology 90 Second" by BombinSound (Pixabay Content License — free for
 commercial use, no attribution required, **not** registered with YouTube
@@ -140,12 +153,56 @@ Modal image the same way `templates/` is (via `add_local_dir` in
 "audio": { "bed_path": "/root/builder/audio/bombinsound-technology-tech-technology-90-second-499581.mp3", "bed_volume": 0.5 }
 ```
 
+What actually happens to the file (`builder/hyperframes_project_builder.py`'s
+`_prepare_audio`/`_fit_bed_audio`): the bed is physically looped (if shorter
+than the video) or trimmed (if longer) via `ffmpeg` to fill the video's real
+computed duration exactly, then written into the project as a plain
+`<audio>` element at a flat `bed_volume` (0.55 default). That's the whole
+mix: one track, one volume, no fades, no ducking, no voiceover to duck
+against. If you omit `audio` entirely, the render is silent -- a fully
+valid, fully watchable output (see the paragraph above).
+
 Add more tracks the same way -- drop an MP3 in `builder/audio/`, redeploy
 (`modal app stop` then `modal deploy` so a warm container doesn't serve the
 old mount), and reference its new `/root/builder/audio/<file>.mp3` path.
 `bed_path`/`outro_path` only accept a path that's actually mounted in the
 container; there's no way to pass arbitrary audio bytes inline (unlike
 `asset_base64` for images) as of this writing.
+
+### Recommended skills for going further on audio
+
+This repo's own mix is intentionally the simplest thing that works (loop,
+trim, flat volume). If you outgrow it -- adding a voiceover, ducking the
+bed under narration, EQ/compression, fades -- install the official
+HyperFrames skill set rather than hand-rolling it:
+
+```bash
+npx skills add heygen-com/hyperframes --full-depth
+```
+
+The ones actually relevant to this repo:
+
+- **`hyperframes-audio`** -- mixing audio *already placed* in a composition:
+  fades, crossfades, track gain, EQ/compressor/limiter/gate, and the
+  "voiceover carve" (ducking a bed under narration by cutting only the
+  frequency bands the voice occupies, so the bed keeps its low end and top
+  instead of going flat). Read this before hand-building any effect chain --
+  its `references/presets.md` names most real problems ("boomy", "muffled",
+  "voice and music fighting") with a one-line fix.
+- **`media-use`** -- *sourcing* audio (and images/icons/voice), not mixing
+  it. Wraps the HeyGen CLI's free-usage catalog search for BGM/SFX/TTS, plus
+  local alternatives (Kokoro for on-device TTS). This is the skill that
+  would have picked the bundled BombinSound track for you, if the HeyGen CLI
+  had been installed and authenticated when we needed one.
+- **`hyperframes-core`** -- the composition contract itself (`data-start`,
+  `data-duration`, tracks, sub-compositions). Read this before hand-editing
+  any template's timing rather than going through `build_project()`.
+- **`hyperframes-animation`** -- if you want richer per-template motion than
+  the 14 shipped templates use.
+
+Installing pulls ~26 skill packages (most unrelated to this repo -- video
+captioning, changelog videos, etc.); `.gitignore` already excludes
+`.agents/`/`.claude/` so they never get committed here.
 
 ## What's intentionally NOT included
 
